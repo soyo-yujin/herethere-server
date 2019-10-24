@@ -22,7 +22,7 @@
         },
         "time": "2018-02-13 20:26:39",
         "type": "library",
-        "installation-source": "dist",
+        "installation-source": "source",
         "autoload": {
             "psr-4": {
                 "FastRoute\\": "src/"
@@ -86,7 +86,7 @@
         },
         "time": "2019-09-27 21:33:43",
         "type": "library",
-        "installation-source": "dist",
+        "installation-source": "source",
         "autoload": {
             "psr-4": {
                 "PHPMailer\\PHPMailer\\": "src/"
@@ -139,7 +139,7 @@
         },
         "time": "2019-03-08 08:55:37",
         "type": "library",
-        "installation-source": "dist",
+        "installation-source": "source",
         "autoload": {
             "files": [
                 "src/getallheaders.php"
@@ -182,7 +182,7 @@
                 "dev-master": "1.0.x-dev"
             }
         },
-        "installation-source": "dist",
+        "installation-source": "source",
         "autoload": {
             "psr-4": {
                 "Psr\\Http\\Message\\": "src/"
@@ -246,7 +246,7 @@
                 "dev-master": "1.6-dev"
             }
         },
-        "installation-source": "dist",
+        "installation-source": "source",
         "autoload": {
             "psr-4": {
                 "GuzzleHttp\\Psr7\\": "src/"
@@ -310,7 +310,7 @@
                 "dev-master": "1.4-dev"
             }
         },
-        "installation-source": "dist",
+        "installation-source": "source",
         "autoload": {
             "psr-4": {
                 "GuzzleHttp\\Promise\\": "src/"
@@ -370,7 +370,7 @@
                 "dev-master": "6.3-dev"
             }
         },
-        "installation-source": "dist",
+        "installation-source": "source",
         "autoload": {
             "files": [
                 "src/functions_include.php"
@@ -434,7 +434,7 @@
         },
         "time": "2019-09-17 03:41:22",
         "type": "library",
-        "installation-source": "dist",
+        "installation-source": "source",
         "autoload": {
             "files": [
                 "phpseclib/bootstrap.php"
@@ -521,7 +521,7 @@
                 "dev-master": "1.0.x-dev"
             }
         },
-        "installation-source": "dist",
+        "installation-source": "source",
         "autoload": {
             "psr-4": {
                 "Psr\\Log\\": "Psr/Log/"
@@ -600,7 +600,7 @@
                 "dev-master": "2.0.x-dev"
             }
         },
-        "installation-source": "dist",
+        "installation-source": "source",
         "autoload": {
             "psr-4": {
                 "Monolog\\": "src/Monolog"
@@ -648,7 +648,7 @@
         },
         "time": "2017-06-27 22:17:23",
         "type": "library",
-        "installation-source": "dist",
+        "installation-source": "source",
         "autoload": {
             "psr-4": {
                 "Firebase\\JWT\\": "src"
@@ -675,17 +675,17 @@
     },
     {
         "name": "google/apiclient-services",
-        "version": "v0.116",
-        "version_normalized": "0.116.0.0",
+        "version": "v0.117",
+        "version_normalized": "0.117.0.0",
         "source": {
             "type": "git",
             "url": "https://github.com/googleapis/google-api-php-client-services.git",
-            "reference": "91c932fa2bdb37f9fc73a5eee3e7b4734a25f51e"
+            "reference": "ae2f0f6f626db67d83ea0a0cd15100b9d083874b"
         },
         "dist": {
             "type": "zip",
-            "url": "https://api.github.com/repos/googleapis/google-api-php-client-services/zipball/91c932fa2bdb37f9fc73a5eee3e7b4734a25f51e",
-            "reference": "91c932fa2bdb37f9fc73a5eee3e7b4734a25f51e",
+            "url": "https://api.github.com/repos/googleapis/google-api-php-client-services/zipball/ae2f0f6f626db67d83ea0a0cd15100b9d083874b",
+            "reference": "ae2f0f6f626db67d83ea0a0cd15100b9d083874b",
             "shasum": ""
         },
         "require": {
@@ -694,9 +694,9 @@
         "require-dev": {
             "phpunit/phpunit": "~4.8"
         },
-        "time": "2019-09-29 00:23:21",
+        "time": "2019-10-07 00:23:24",
         "type": "library",
-        "installation-source": "dist",
+        "installation-source": "source",
         "autoload": {
             "psr-0": {
                 "Google_Service_": "src"
@@ -737,7 +737,7 @@
                 "dev-master": "1.0.x-dev"
             }
         },
-        "installation-source": "dist",
+        "installation-source": "source",
         "autoload": {
             "psr-4": {
                 "Psr\\Cache\\": "src/"
@@ -795,7 +795,7 @@
         },
         "time": "2019-10-01 18:35:05",
         "type": "library",
-        "installation-source": "dist",
+        "installation-source": "source",
         "autoload": {
             "psr-4": {
                 "Google\\Auth\\": "src"
@@ -857,7 +857,7 @@
                 "dev-master": "2.x-dev"
             }
         },
-        "installation-source": "dist",
+        "installation-source": "source",
         "autoload": {
             "psr-0": {
                 "Google_": "src/"

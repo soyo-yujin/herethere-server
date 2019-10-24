@@ -7,6 +7,8 @@ require './vendor/autoload.php';
 use \Monolog\Logger as Logger;
 use Monolog\Handler\StreamHandler;
 
+//echo "test_server";
+
 date_default_timezone_set('Asia/Seoul');
 ini_set('default_charset', 'utf8mb4');
 
@@ -16,10 +18,19 @@ ini_set('default_charset', 'utf8mb4');
 //Main Server API
 $dispatcher = FastRoute\simpleDispatcher(function (FastRoute\RouteCollector $r) {
     /* ******************   Test   ****************** */
-    $r->addRoute('GET', '/', ['IndexController', 'index']);
-    $r->addRoute('GET', '/test', ['IndexController', 'test']);
+    $r->addRoute('GET', '/', ['IndexController', 'index']); //index
+    $r->addRoute('POST', '/email', ['IndexController', 'email']); //email- 회원가입 API
+    $r->addRoute('POST', '/nickname', ['IndexController', 'nickname']); //nickname - 회원가입 API
+    $r->addRoute('POST', '/guest', ['IndexController', 'guest']); //회원가입 API - 토큰 생성 API
+    $r->addRoute('POST', '/url', ['IndexController', 'Certified']); //학교인증 API
+    $r->addRoute('POST', '/area', ['IndexController', 'postArea']); //관심지역 설정 API
+    $r->addRoute('POST', '/user', ['IndexController', 'login']); //로그인 API
+    $r->addRoute('GET', '/area', ['IndexController', 'getArea']); //관심지역 출력 API
+    $r->addRoute('GET', '/user/{userId}', ['MainController', 'getUser']); //유저정보 출력 API
+
+
     $r->addRoute('GET', '/test/{testNo}', ['IndexController', 'testDetail']);
-    $r->addRoute('POST', '/test', ['IndexController', 'testPost']);
+//    $r->addRoute('POST', '/test', ['IndexController', 'testPost']);
     $r->addRoute('GET', '/jwt', ['MainController', 'validateJwt']);
     $r->addRoute('POST', '/jwt', ['MainController', 'createJwt']);
 

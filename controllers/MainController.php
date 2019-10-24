@@ -14,6 +14,10 @@ try {
          * API Name : JWT 유효성 검사 테스트 API
          * 마지막 수정 날짜 : 19.04.25
          */
+
+        case "getUser":
+            //유저정보 조회 API
+            break;
         case "validateJwt":
             // jwt 유효성 검사
             if (!isValidHeader($jwt, JWT_SECRET_KEY)) {
@@ -37,6 +41,7 @@ try {
          * API Name : JWT 생성 테스트 API
          * 마지막 수정 날짜 : 19.04.25
          */
+
         case "createJwt":
             // jwt 유효성 검사
             if (!isValidHeader($jwt, JWT_SECRET_KEY)) {
