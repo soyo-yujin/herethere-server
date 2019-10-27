@@ -37,6 +37,7 @@ function nicknamecheckGuest($nickname)
 function signUp($email, $name, $birth, $password, $nickname)
 {
     $no = (int)0;
+//    $image_no = (int)1; //1이 NULL
     $email = (string)$email;
     $name = (string)$name;
     $birth = (int)$birth;
@@ -60,11 +61,12 @@ function signUp($email, $name, $birth, $password, $nickname)
     $st->bindParam(6, $auth, PDO::PARAM_STR);
     $st->bindParam(7, $timestamp, PDO::PARAM_STR);
     $st->bindParam(8, $is_deleted, PDO::PARAM_STR);
+//    $st->bindParam(9, $image_no, PDO::PARAM_INT);
     $st->bindParam(9, $nickname, PDO::PARAM_STR);
     $st -> execute();
 
-   $st = null;
-   $pdo = null;
+    $st = null;
+    $pdo = null;
 }
 
 function insertImage($url)
@@ -103,11 +105,11 @@ function getArea()
     return $res;
 }
 
-function postArea($userNo, $result)
+function postArea($userNo, $national)
 {
     $no = 0;
     $int = 0;
-    $count = count($result);
+    $count = count($national);
     $question_marks = str_repeat(",(?,?,?)", $count-1);
 
     $pdo = pdoSqlConnect();
@@ -115,12 +117,11 @@ function postArea($userNo, $result)
 
     $st = $pdo->prepare($query);
 
-    foreach ($result as $row => $value)
+    foreach ($national as $row => $value)
     {
-        $productId = $value->nationalNo;
         $st->bindValue($int + 1, $no);
         $st->bindValue($int + 2, $userNo);
-        $st->bindValue($int + 3, $productId);
+        $st->bindValue($int + 3, $value);
         $int = $int + 3;
     }
     $st -> execute();
@@ -145,6 +146,23 @@ function login($email, $password)
     $pdo = null;
 
     return $res[0]['exist'];
+}
+
+function getUser($userNo)
+{
+    $pdo = pdoSqlConnect();
+    $query = "select url, nickname, email, introduce from users inner join images on  users.profile_image_no = images.no where users.No = ?;";
+//    echo "$query";
+    $st = $pdo->prepare($query);
+    //    $st->execute([$param,$param]);
+    $st->execute([$userNo]);
+    $st->setFetchMode(PDO::FETCH_ASSOC);
+    $res = $st->fetchAll();
+
+    $st = null;
+    $pdo = null;
+
+    return $res;
 }
 
 //READ

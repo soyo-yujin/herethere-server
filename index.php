@@ -13,7 +13,7 @@ date_default_timezone_set('Asia/Seoul');
 ini_set('default_charset', 'utf8mb4');
 
 //에러출력하게 하는 코드
-//error_reporting(E_ALL); ini_set("display_errors", 1);
+error_reporting(E_ALL); ini_set("display_errors", 1);
 
 //Main Server API
 $dispatcher = FastRoute\simpleDispatcher(function (FastRoute\RouteCollector $r) {
@@ -26,8 +26,8 @@ $dispatcher = FastRoute\simpleDispatcher(function (FastRoute\RouteCollector $r) 
     $r->addRoute('POST', '/area', ['IndexController', 'postArea']); //관심지역 설정 API
     $r->addRoute('POST', '/user', ['IndexController', 'login']); //로그인 API
     $r->addRoute('GET', '/area', ['IndexController', 'getArea']); //관심지역 출력 API
-    $r->addRoute('GET', '/user/{userId}', ['MainController', 'getUser']); //유저정보 출력 API
-
+    $r->addRoute('GET', '/user', ['MainController', 'user']); //유저정보 출력 API
+    $r->addRoute('PATCH', '/user', ['MainController', 'patchUser']); //유저정보 수정 API
 
     $r->addRoute('GET', '/test/{testNo}', ['IndexController', 'testDetail']);
 //    $r->addRoute('POST', '/test', ['IndexController', 'testPost']);

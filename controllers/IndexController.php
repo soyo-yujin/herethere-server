@@ -13,7 +13,7 @@ try {
     addAccessLogs($accessLogs, $req);
 
     switch ($handler) {
-       case "index":
+        case "index":
             echo "API Server";
             break;
         case "ACCESS_LOGS":
@@ -132,15 +132,29 @@ try {
             }
             if(strlen($password) > 0 and strlen($name) > 0 and strlen($birth) > 0 and strlen($nickname) > 0 and strlen($email) > 0)
             {
-                signUp($email, $name, $birth, $password, $nickname);
-                http_response_code(200);
-                $jwt = getJWToken($email, $password, JWT_SECRET_KEY);
-                $res->result->jwt = $jwt;
-                $res->isSuccess = TRUE;
-                $res->code = 106;
-                $res->message = "개인정보 저장을 성공하였습니다";
-                echo json_encode($res, JSON_NUMERIC_CHECK);
-                return;
+                $isalreadyEmail  =  emailcheckGuest($email);
+                $isalreadyNickname  =  nicknamecheckGuest($nickname);
+                if ($isalreadyEmail == 0 and $isalreadyNickname == 0)
+                {
+                    signUp($email, $name, $birth, $password, $nickname);
+                    http_response_code(200);
+                    $jwt = getJWToken($email, $password, JWT_SECRET_KEY);
+                    $res->result->jwt = $jwt;
+                    $res->isSuccess = TRUE;
+                    $res->code = 106;
+                    $res->message = "개인정보 저장을 성공하였습니다";
+                    echo json_encode($res, JSON_NUMERIC_CHECK);
+                    return;
+                }
+                else
+                {
+                    $res->isSuccess = false;
+                    $res->code = 199;
+                    $res->message = "이미 있는 이메일 이거나 닉네임 입니다";
+                    echo json_encode($res, JSON_NUMERIC_CHECK);
+                    return;
+                }
+
             }
 
             break;
@@ -214,62 +228,24 @@ try {
             }
             break;
 
-         case "postArea":
+        case "postArea":
 
-             $jwt = $_SERVER["HTTP_X_ACCESS_TOKEN"];
-
-             $result = isValidHeader($jwt, JWT_SECRET_KEY);
-             $isintval = $result['intval'];
-             $email = $result['email'];
-             $result= $req->result;
-
-             $userNo = convert_to_userNo($email);
-
-             if ($isintval === 0) //토큰 검증 여부
-             {
-                 $res->isSuccess = FALSE;
-                 $res->code = 201;
-                 $res->message = "유효하지 않은 토큰입니다";
-                 echo json_encode($res, JSON_NUMERIC_CHECK);
-                 addErrorLogs($errorLogs, $res, $req); //에러로그 오류
-                 return;
-             }
-             else if ($isintval === 1)
-             {
-                 if(strlen($result) < 1)
-                 {
-                     $res->isSuccess = false;
-                     $res->code = 112;
-                     $res->message = "관심지역을 입력해주세요";
-                     echo json_encode($res, JSON_NUMERIC_CHECK);
-                     return;
-                 }
-
-                 if(strlen($result) > 0)
-                 {
-                     $area = $req->area;
-                     http_response_code(200);
-                     postArea($userNo, $result);
-                     $res->isSuccess = TRUE;
-                     $res->code = 111;
-                     $res->message = "관심지역 설정 저장을 성공했습니다";
-                     echo json_encode($res, JSON_NUMERIC_CHECK);
-                     return;
-                 }
-
-             }
-
-             break;
-
-        case "login":
-
-            $email= $req->email;
-            $password= $req->password;
             $jwt = $_SERVER["HTTP_X_ACCESS_TOKEN"];
 
             $result = isValidHeader($jwt, JWT_SECRET_KEY);
             $isintval = $result['intval'];
             $email = $result['email'];
+            $result= $req->result;
+
+            $count = 0;
+            foreach($result as $nationalNo => $value)
+            {
+                $nationalId = $value->nationalNo;
+                $national[$count++] = $nationalId;
+
+            }
+
+            $userNo = convert_to_userNo($email);
 
             if ($isintval === 0) //토큰 검증 여부
             {
@@ -282,9 +258,40 @@ try {
             }
             else if ($isintval === 1)
             {
+                if(count($national) < 1)
+                {
+                    $res->isSuccess = false;
+                    $res->code = 112;
+                    $res->message = "관심지역을 입력해주세요";
+                    echo json_encode($res, JSON_NUMERIC_CHECK);
+                    return;
+                }
 
-                $loginResult = login($email, $password);
+                if(count($national) > 0)
+                {
+                    $area = $req->area;
+                    http_response_code(200);
+                    postArea($userNo, $national);
+                    $res->isSuccess = TRUE;
+                    $res->code = 111;
+                    $res->message = "관심지역 설정 저장을 성공했습니다";
+                    echo json_encode($res, JSON_NUMERIC_CHECK);
+                    return;
+                }
 
+            }
+
+            break;
+
+        case "login":
+
+            $email= $req->email;
+            $password= $req->password;
+
+            $loginResult = login($email, $password);
+
+            if(strlen($email) > 0 and strlen($password) > 0)
+            {
                 if($loginResult == 0)
                 {
                     $res->isSuccess = false;
@@ -293,10 +300,11 @@ try {
                     echo json_encode($res, JSON_NUMERIC_CHECK);
                     return;
                 }
-
-                if($loginResult == 1)
+                else if($loginResult == 1)
                 {
                     http_response_code(200);
+                    $jwt = getJWToken($email, $password, JWT_SECRET_KEY);
+                    $res->result->jwt = $jwt;
                     $res->isSuccess = TRUE;
                     $res->code = 113;
                     $res->message = "로그인을 성공했습니다";
@@ -304,6 +312,15 @@ try {
                     return;
                 }
             }
+            else if (strlen($email) < 1 or strlen($password) < 1)
+            {
+                $res->isSuccess = false;
+                $res->code = 115;
+                $res->message = "아이디와 비밀번호를 입력해주세요";
+                echo json_encode($res, JSON_NUMERIC_CHECK);
+                return;
+            }
+
             break;
 
         /*

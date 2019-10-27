@@ -15,9 +15,44 @@ try {
          * 마지막 수정 날짜 : 19.04.25
          */
 
-        case "getUser":
-            //유저정보 조회 API
+        case "user":
+
+
+            $jwt = $_SERVER["HTTP_X_ACCESS_TOKEN"];
+
+            $result = isValidHeader($jwt, JWT_SECRET_KEY);
+            $isintval = $result['intval'];
+            $email = $result['email'];
+
+            $userNo = convert_to_userNo($email);
+
+            echo "$userNo";
+
+            if ($isintval === 0) //토큰 검증 여부
+            {
+                $res->isSuccess = FALSE;
+                $res->code = 201;
+                $res->message = "유효하지 않은 토큰입니다";
+                echo json_encode($res, JSON_NUMERIC_CHECK);
+                addErrorLogs($errorLogs, $res, $req); //에러로그 오류
+                return;
+            }
+            else if($isintval === 1)
+            {
+                http_response_code(200);
+                $res->result = getUser($userNo);
+                $res->isSuccess = TRUE;
+                $res->code = 116;
+                $res->message = "유저정보 조회를 성공했습니다";
+                echo json_encode($res, JSON_NUMERIC_CHECK);
+                return;
+            }
+
             break;
+
+        case "patchUser": //유저정보 수정 api
+            break;
+
         case "validateJwt":
             // jwt 유효성 검사
             if (!isValidHeader($jwt, JWT_SECRET_KEY)) {
