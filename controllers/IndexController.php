@@ -94,7 +94,7 @@ try {
                 //중복없음
                 http_response_code(200);
                 $res->isSuccess = TRUE;
-                $res->code = 103;
+                $res->code = 100;
                 $res->message = "닉네임 중복 확인에 성공하였습니다";
                 echo json_encode($res, JSON_NUMERIC_CHECK);
             }
@@ -141,7 +141,7 @@ try {
                     $jwt = getJWToken($email, $password, JWT_SECRET_KEY);
                     $res->result->jwt = $jwt;
                     $res->isSuccess = TRUE;
-                    $res->code = 106;
+                    $res->code = 100;
                     $res->message = "개인정보 저장을 성공하였습니다";
                     echo json_encode($res, JSON_NUMERIC_CHECK);
                     return;
@@ -190,7 +190,7 @@ try {
 
                 $isinsertImage = insertImage($url);
                 $res->isSuccess = TRUE;
-                $res->code = 108;
+                $res->code = 100;
                 $res->message = "개인정보 저장을 성공하였습니다";
                 echo json_encode($res, JSON_NUMERIC_CHECK);
                 return;
@@ -221,7 +221,7 @@ try {
             {
                 $res->result = getArea();
                 $res->isSuccess = TRUE;
-                $res->code = 110;
+                $res->code = 100;
                 $res->message = "지역목록 조회를 성공하였습니다";
                 echo json_encode($res, JSON_NUMERIC_CHECK);
                 return;
@@ -273,7 +273,7 @@ try {
                     http_response_code(200);
                     postArea($userNo, $national);
                     $res->isSuccess = TRUE;
-                    $res->code = 111;
+                    $res->code = 100;
                     $res->message = "관심지역 설정 저장을 성공했습니다";
                     echo json_encode($res, JSON_NUMERIC_CHECK);
                     return;
@@ -306,7 +306,7 @@ try {
                     $jwt = getJWToken($email, $password, JWT_SECRET_KEY);
                     $res->result->jwt = $jwt;
                     $res->isSuccess = TRUE;
-                    $res->code = 113;
+                    $res->code = 100;
                     $res->message = "로그인을 성공했습니다";
                     echo json_encode($res, JSON_NUMERIC_CHECK);
                     return;

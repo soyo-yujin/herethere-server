@@ -26,12 +26,24 @@ $dispatcher = FastRoute\simpleDispatcher(function (FastRoute\RouteCollector $r) 
     $r->addRoute('POST', '/area', ['IndexController', 'postArea']); //관심지역 설정 API
     $r->addRoute('POST', '/user', ['IndexController', 'login']); //로그인 API
     $r->addRoute('GET', '/area', ['IndexController', 'getArea']); //관심지역 출력 API
-    $r->addRoute('GET', '/user', ['MainController', 'user']); //유저정보 출력 API
-    $r->addRoute('PATCH', '/user', ['MainController', 'patchUser']); //유저정보 수정 API
+    $r->addRoute('GET', '/user', ['MyController', 'user']); //유저정보 출력 API
+    $r->addRoute('PATCH', '/detailUser', ['MyController', 'patchUser']); //유저상세정보 수정 API
+    $r->addRoute('GET', '/detailUser', ['MyController', 'detailUser']); //유저상세정보 조회 API
+    $r->addRoute('GET', '/likeArea', ['MyController', 'myArea']); // 관심지역 조회 API 게시물 작성시 필요
+    $r->addRoute('POST', '/post', ['MainController', 'postPost']); //게시글 작성 API
+    $r->addRoute('GET', '/post/{postNo}', ['MainController', 'getPost']); //게시글 상세보기 조회  API 개발 진행 필요
+    $r->addRoute('POST', '/like/{postNo}', ['MainController', 'postLike']); //좋아요 누르기 API
+    $r->addRoute('DELETE', '/like/{postNo}', ['MainController', 'deleteLike']); //좋아요 취소 API
+    $r->addRoute('POST', '/scrap', ['MainController', 'postScrap']); //스크랩북 추가 (생성) API
+    $r->addRoute('GET', '/scrap', ['MainController', 'getScrap']); //스크랩북 목록 조회 API
+    $r->addRoute('POST', '/scrap/{scrapNo}/post/{postNo}', ['MainController', 'doScrap_post']); //게시글 스크랩 하기 API
+    $r->addRoute('DELETE', '/scrap/{scrapNo}/post/{postNo}', ['MainController', 'deleteScrap_post']); //게시글 스크랩 해제 API
+
+    $r->addRoute('PATCH', '/scrap/{scrapNo}', ['MainController', 'patchScrap']); //스크랩북 수정 API
 
     $r->addRoute('GET', '/test/{testNo}', ['IndexController', 'testDetail']);
 //    $r->addRoute('POST', '/test', ['IndexController', 'testPost']);
-    $r->addRoute('GET', '/jwt', ['MainController', 'validateJwt']);
+
     $r->addRoute('POST', '/jwt', ['MainController', 'createJwt']);
 
 
@@ -91,11 +103,11 @@ switch ($routeInfo[0]) {
                 $vars = $routeInfo[2];
                 require './controllers/MainController.php';
                 break;
-            /*case 'EventController':
+            case 'MyController':
                 $handler = $routeInfo[1][1]; $vars = $routeInfo[2];
-                require './controllers/EventController.php';
+                require './controllers/MyController.php';
                 break;
-            case 'ProductController':
+            /*case 'ProductController':
                 $handler = $routeInfo[1][1]; $vars = $routeInfo[2];
                 require './controllers/ProductController.php';
                 break;
