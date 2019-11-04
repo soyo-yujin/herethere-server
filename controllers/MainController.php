@@ -15,6 +15,76 @@ try {
          * 마지막 수정 날짜 : 19.04.25
          */
 
+        case "home":
+
+            $jwt = $_SERVER["HTTP_X_ACCESS_TOKEN"];
+
+            $result = isValidHeader($jwt, JWT_SECRET_KEY);
+            $isintval = $result['intval'];
+            $email = $result['email'];
+//            $nationalNo = $req->nationalNo;
+            $page = $req->page;
+            $size = $req->size;
+
+
+            $result= $req->result;
+
+            $count = 0;
+            foreach($result as $nationalNo => $value)
+            {
+                $nationalId = $value->nationalNo;
+                $national[$count++] = $nationalId;
+            }
+            
+
+            $userNo = convert_to_userNo($email);
+
+            if ($isintval === 0) //토큰 검증 여부
+            {
+                $res->isSuccess = FALSE;
+                $res->code = 201;
+                $res->message = "유효하지 않은 토큰입니다";
+                echo json_encode($res, JSON_NUMERIC_CHECK);
+                addErrorLogs($errorLogs, $res, $req); //에러로그 오류
+                return;
+            }
+            else if($isintval === 1)
+            {
+
+                if(count($national) < 1)
+                {
+                    $res->isSuccess = false;
+                    $res->code = 190;
+                    $res->message = "관심지역을 입력해주세요";
+                    echo json_encode($res, JSON_NUMERIC_CHECK);
+                    return;
+                }
+
+                if(strlen($page) < 1 or strlen($size) < 1)
+                {
+                    $res->isSuccess = false;
+                    $res->code = 191;
+                    $res->message = "페이징과 사이즈를 입력해주세요";
+                    echo json_encode($res, JSON_NUMERIC_CHECK);
+                    return;
+                }
+
+                if(strlen($nationalNo) > 0 and strlen($page) > 0 and strlen($size) > 0)
+                {
+                    http_response_code(200);
+                    $res->result = getHome($national, $userNo, $page, $size);
+                    $res->isSuccess = TRUE;
+                    $res->code = 100;
+                    $res->message = "피드조회을 성공했습니다";
+                    echo json_encode($res);
+                    return;
+                }
+
+            }
+
+            break;
+
+
         case "postPost":
 
             $jwt = $_SERVER["HTTP_X_ACCESS_TOKEN"];
@@ -48,14 +118,6 @@ try {
             }
             else if($isintval === 1)
             {
-                if(count($photo)  < 1)
-                {
-                    $res->isSuccess = false;
-                    $res->code = 116;
-                    $res->message = "사진 URL을 입력해주세요";
-                    echo json_encode($res, JSON_NUMERIC_CHECK);
-                    return;
-                }
 
                 if(strlen($text) < 1)
                 {
@@ -71,6 +133,17 @@ try {
                     $res->isSuccess = false;
                     $res->code = 118;
                     $res->message = "지역번호을 입력해주세요";
+                    echo json_encode($res, JSON_NUMERIC_CHECK);
+                    return;
+                }
+
+                if(count($photo)  < 1 and strlen($text) > 0 and strlen($nationalNo) > 0)
+                {
+                    http_response_code(200);
+                    without_postPost($userNo, $nationalNo, $text);
+                    $res->isSuccess = TRUE;
+                    $res->code = 100;
+                    $res->message = "게시글 저장을 성공했습니다";
                     echo json_encode($res, JSON_NUMERIC_CHECK);
                     return;
                 }
@@ -122,7 +195,8 @@ try {
                 if(strlen($postNo) > 0)
                 {
 //                    echo "$postNo";
-                    getPost($postNo, $userNo);
+                    $result = getPost($postNo, $userNo);
+//                    echo json_encode($result);
 
                 }
             }
@@ -570,7 +644,79 @@ try {
 
             break;
 
-        case "patchScrap":
+        case "patchScrap": //
+
+
+            $jwt = $_SERVER["HTTP_X_ACCESS_TOKEN"];
+
+            $result = isValidHeader($jwt, JWT_SECRET_KEY);
+            $isintval = $result['intval'];
+            $email = $result['email'];
+            $scrapNo = $vars["scrapNo"];
+            $scrapName = $req->name;
+            $closure = $req->closure;
+            $photo = $req->photo;
+
+            $count = 0;
+            foreach($photo as $url => $value)
+            {
+                $urlResult = $value->url;
+                $photoResult[$count++] = $urlResult;
+            }
+
+            $userNo = convert_to_userNo($email);
+
+            if ($isintval === 0) //토큰 검증 여부
+            {
+                $res->isSuccess = FALSE;
+                $res->code = 201;
+                $res->message = "유효하지 않은 토큰입니다";
+                echo json_encode($res, JSON_NUMERIC_CHECK);
+                addErrorLogs($errorLogs, $res, $req); //에러로그 오류
+                return;
+            }
+            else if($isintval === 1)
+            {
+                if(strlen($scrapName) < 1)
+                {
+                    $res->isSuccess = false;
+                    $res->code = 134;
+                    $res->message = "게시글 이름을 입력해주세요";
+                    echo json_encode($res, JSON_NUMERIC_CHECK);
+                    return;
+                }
+
+
+                if(strlen($closure) < 1)
+                {
+                    $res->isSuccess = false;
+                    $res->code = 134;
+                    $res->message = "공개여부를 입력해주세요";
+                    echo json_encode($res, JSON_NUMERIC_CHECK);
+                    return;
+                }
+
+                if(count($photoResult) < 1)
+                {
+                    $res->isSuccess = false;
+                    $res->code = 134;
+                    $res->message = "사진 URL을 입력해주세요";
+                    echo json_encode($res, JSON_NUMERIC_CHECK);
+                    return;
+                }
+
+                $isexistScrap = scrapCheck($userNo, $scrapNo);
+
+                if($isexistScrap == 0)
+                {
+                    $res->isSuccess = false;
+                    $res->code = 138;
+                    $res->message = "유효한 스크랩북 번호를 입력해주세요";
+                    echo json_encode($res, JSON_NUMERIC_CHECK);
+                    return;
+                }
+
+            }
 
             break;
 
