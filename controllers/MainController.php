@@ -50,11 +50,20 @@ try {
             }
             else if($isintval === 1)
             {
+                //피드 조회 api
+//                if(strlen($nationalNo) < 1)
+//                {
+//                    $res->isSuccess = false;
+//                    $res->code = 116;
+//                    $res->message = "국가번호를 입력해주세요";
+//                    echo json_encode($res, JSON_NUMERIC_CHECK);
+//                    return;
+//                }
 
                 if(count($national) < 1)
                 {
                     $res->isSuccess = false;
-                    $res->code = 190;
+                    $res->code = 112;
                     $res->message = "관심지역을 입력해주세요";
                     echo json_encode($res, JSON_NUMERIC_CHECK);
                     return;
@@ -63,7 +72,7 @@ try {
                 if(strlen($page) < 1 or strlen($size) < 1)
                 {
                     $res->isSuccess = false;
-                    $res->code = 191;
+                    $res->code = 116;
                     $res->message = "페이징과 사이즈를 입력해주세요";
                     echo json_encode($res, JSON_NUMERIC_CHECK);
                     return;
@@ -71,13 +80,11 @@ try {
 
                 if(strlen($nationalNo) > 0 and strlen($page) > 0 and strlen($size) > 0)
                 {
-                    http_response_code(200);
+//                    echo json_encode($national);
                     $res->result = getHome($national, $userNo, $page, $size);
-                    $res->isSuccess = TRUE;
                     $res->code = 100;
-                    $res->message = "피드조회을 성공했습니다";
-                    echo json_encode($res);
-                    return;
+                    $res->message = "피드조회 성공";
+                    echo json_encode($res, JSON_NUMERIC_CHECK);
                 }
 
             }

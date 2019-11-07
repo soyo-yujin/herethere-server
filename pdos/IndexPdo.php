@@ -516,13 +516,18 @@ from (select postinUSER.no as postNo, nickname, postinUSER.user_no, images.url a
 from users inner join images inner join (select * from posts inner join locations on posts.location_no = locations.nationalNo 
 where ";
         $whereString = "(";
-        for ($i = 0; $i < count($nationalArr); $i++) {
-            $nationalNo = $nationalArr[$i];
-            if ($i == count($nationalArr) - 1) {
-                $whereString = $whereString . "location_no = " . $nationalNo . ") ";
+        if($nationalArr[0] == 0){
+            $whereString = "1 = 1 ";
+        }
+        else{
+            for ($i = 0; $i < count($nationalArr); $i++) {
+                $nationalNo = $nationalArr[$i];
+                if ($i == count($nationalArr) - 1) {
+                    $whereString = $whereString . "location_no = " . $nationalNo . ") ";
 
-            } else {
-                $whereString = $whereString . "location_no = " . $nationalNo . " or ";
+                } else {
+                    $whereString = $whereString . "location_no = " . $nationalNo . " or ";
+                }
             }
         }
         $query = $query . $whereString;
@@ -605,6 +610,14 @@ group by getlike.postNo, nickname, profileUrl, registered_timestamp, contents, l
             $commentsCount = $res5[0];
             $nationalName = $res6[0];
 
+//        $row->post = $res[$int];
+//        $row->post['myLike'] = $myLike['myLike'];
+//        $row->post['myScrap'] = $myScrap['myScrap'];
+//        $row->post['myPost'] = $myPost['myPost'];
+//        $row->post['imageUrl'] = $url;
+//        $row->post['commentsCount'] = $commentsCount['commentsCount'];
+//        $row->post['nationalName'] = $nationalName['nationalName'];
+//        echo json_encode($post);
             $int = $int + 1;
 
             $row['myLike'] = $myLike['myLike'];
@@ -615,7 +628,9 @@ group by getlike.postNo, nickname, profileUrl, registered_timestamp, contents, l
             $row['nationalName'] = $nationalName['nationalName'];
 
             array_push($post_result, $row);
+
         }
+
         return $post_result;
     } catch (Exception $e) {
         echo $e;
