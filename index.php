@@ -1,6 +1,5 @@
 <?php
 
-
 require './pdos/DatabasePdo.php';
 require './pdos/IndexPdo.php';
 require './vendor/autoload.php';
@@ -8,7 +7,7 @@ require './vendor/autoload.php';
 use \Monolog\Logger as Logger;
 use Monolog\Handler\StreamHandler;
 
-//echo "test_server";
+
 
 date_default_timezone_set('Asia/Seoul');
 ini_set('default_charset', 'utf8mb4');
@@ -31,25 +30,37 @@ $dispatcher = FastRoute\simpleDispatcher(function (FastRoute\RouteCollector $r) 
     $r->addRoute('PATCH', '/detailUser', ['MyController', 'patchUser']); //유저상세정보 수정 API
     $r->addRoute('GET', '/detailUser', ['MyController', 'detailUser']); //유저상세정보 조회 API
     $r->addRoute('GET', '/likeArea', ['MyController', 'myArea']); // 관심지역 조회 API 게시물 작성시 필요
-
     $r->addRoute('POST', '/home', ['MainController', 'home']); // 피드 조회 API
-
+    $r->addRoute('GET', '/post/{postNo}', ['MainController', 'getPost']); //게시글 상세보기 조회 API
+    $r->addRoute('GET', '/post/{postNo}/comments', ['MainController', 'getComments']); //댓글 조회 API
+    $r->addRoute('GET', '/post/{postNo}/comments/{commentsNo}', ['MainController', 'getBundle']); //대댓글 조회 API
+    $r->addRoute('POST', '/post/{postNo}/comments', ['MainController', 'postComments']); //댓글 작성, 대댓글 작성 API
+    $r->addRoute('GET', '/scrap/{scrapNo}/{page}', ['MainController', 'getscrapHome']); //스크랩북 피드 조회 API
     $r->addRoute('POST', '/post', ['MainController', 'postPost']); //게시글 작성 API
-    $r->addRoute('GET', '/post/{postNo}', ['MainController', 'getPost']); //게시글 상세보기 조회  API 개발 진행 필요
     $r->addRoute('POST', '/like/{postNo}', ['MainController', 'postLike']); //좋아요 누르기 API
     $r->addRoute('DELETE', '/like/{postNo}', ['MainController', 'deleteLike']); //좋아요 취소 API
     $r->addRoute('POST', '/scrap', ['MainController', 'postScrap']); //스크랩북 추가 (생성) API
     $r->addRoute('GET', '/scrap', ['MainController', 'getScrap']); //스크랩북 목록 조회 API
     $r->addRoute('POST', '/scrap/{scrapNo}/post/{postNo}', ['MainController', 'doScrap_post']); //게시글 스크랩 하기 API
     $r->addRoute('DELETE', '/scrap/{scrapNo}/post/{postNo}', ['MainController', 'deleteScrap_post']); //게시글 스크랩 해제 API
-
+    $r->addRoute('DELETE', '/scrap/post/{postNo}', ['MainController', 'deleteScrap_post_no_scrap']); //게시글 스크랩 해제 API (홈화면용 scrap No 필요없)
     $r->addRoute('PATCH', '/scrap/{scrapNo}', ['MainController', 'patchScrap']); //스크랩북 수정 API
+    $r->addRoute('GET', '/pushHistory', ['UserController', 'pushHistory']); // 푸시 조회 API
+
+    $r->addRoute('PATCH', '/users/fcmToken', ['UserController', 'updateFCMToken']);
+
+    $r->addRoute('GET', '/myPost/{page}', ['UserController', 'getMyPost']); //나의 피드 조회 API
+    $r->addRoute('GET', '/myGallery/{page}', ['UserController', 'getMyGallery']); //나의 갤러리 조회 API
+    $r->addRoute('GET', '/user/profile/{userNo}', ['UserController', 'getUserProfile']); //타인 개인정보 조회 API
+    $r->addRoute('GET', '/userPost/{userNo}/{page}', ['UserController', 'getUserPost']); //타인 포스트 조회 API
+    $r->addRoute('GET', '/userGallery/{userNo}/{page}', ['UserController', 'getUserGallery']); //타인 갤러리 조회 API
+    $r->addRoute('GET', '/search/post', ['MainController', 'searchPost']);  //닉네임 검색 API
+    $r->addRoute('GET', '/search/nickname', ['MainController', 'searchNick']);  //닉네임 검색 API
 
     $r->addRoute('GET', '/test/{testNo}', ['IndexController', 'testDetail']);
 //    $r->addRoute('POST', '/test', ['IndexController', 'testPost']);
 
     $r->addRoute('POST', '/jwt', ['MainController', 'createJwt']);
-
 
 //    $r->addRoute('GET', '/users', 'get_all_users_handler');
 //    // {id} must be a number (\d+)
@@ -111,10 +122,11 @@ switch ($routeInfo[0]) {
                 $handler = $routeInfo[1][1]; $vars = $routeInfo[2];
                 require './controllers/MyController.php';
                 break;
-            /*case 'ProductController':
+            case 'UserController':
                 $handler = $routeInfo[1][1]; $vars = $routeInfo[2];
-                require './controllers/ProductController.php';
+                require './controllers/UserController.php';
                 break;
+                /*
             case 'SearchController':
                 $handler = $routeInfo[1][1]; $vars = $routeInfo[2];
                 require './controllers/SearchController.php';

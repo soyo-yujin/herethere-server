@@ -31,6 +31,8 @@ function isValidHeader($jwt, $key)
 
 function sendFcm($fcmToken, $data, $key, $deviceType)
 {
+    $result = Array();
+
     $url = 'https://fcm.googleapis.com/fcm/send';
 
     $headers = array(
@@ -64,10 +66,14 @@ function sendFcm($fcmToken, $data, $key, $deviceType)
 
     $result = curl_exec($ch);
     if ($result === FALSE) {
-        //die('FCM Send Error: ' . curl_error($ch));
+        //die('FCM Send Error: ' . curl_error($ch));}
     }
-    curl_close($ch);
-    return $result;
+//  if($result['success'])
+    $json = json_decode($result, true);
+//    echo $json['success'];
+
+        curl_close($ch);
+    return $json['success'];
 }
 
 function getTodayByTimeStamp()

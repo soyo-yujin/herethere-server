@@ -1,4 +1,5 @@
 <?php
+require './pdos/MoonPdo.php';
 
 function emailcheckGuest($email)
 {
@@ -50,7 +51,7 @@ function signUp($email, $name, $birth, $password, $nickname)
     $pdo = null;
 
     $pdo = pdoSqlConnect();
-    $query = "select no from images order by is_registered desc;";
+    $query = "select no from images order by no desc;";
 
     $st = $pdo->prepare($query);
     //    $st->execute([$param,$param]);
@@ -69,7 +70,7 @@ function signUp($email, $name, $birth, $password, $nickname)
     $name = (string)$name;
     $birth = (string)$birth;
     $password = (string)$password;
-    $auth = (string)"N";
+    $auth = (string)"Y";
     $is_deleted = (int)0;
     $nickname = (string)$nickname;
     $timestamp = date("Y-m-d H:i:s");
@@ -246,27 +247,58 @@ on selectNational.nationalNo = selectUser.location_no;";
 }
 
 
-function patchUser($url, $introduce, $userNo) //관심지역 추가 요망
+function patchUser($url, $introduce, $userNo, $national) //관심지역 추가 요망
 {
-    $pdo = pdoSqlConnect();
-    $query = "UPDATE images
+    try {
+        $pdo = pdoSqlConnect();
+        $queryIamge = "UPDATE images
                         SET url = ?
                         WHERE NO = (select profile_image_no from users where no = ?);";
+        $st1 = $pdo->prepare($queryIamge);
 
-    $st = $pdo->prepare($query);
-    $st->execute([$url, $userNo]);
-    $st = null;
-    $pdo = null;
 
-    $pdo = pdoSqlConnect();
-    $query = "UPDATE users
+        $queryIntroduce = "UPDATE users
                         SET introduce = ?
                         WHERE NO = ?;";
+        $st2 = $pdo->prepare($queryIntroduce);
 
-    $st = $pdo->prepare($query);
-    $st->execute([$introduce, $userNo]);
-    $st = null;
-    $pdo = null;
+        $queryDelete = "DELETE FROM interesting_relations WHERE user_no = ?;";
+        $st3 = $pdo->prepare($queryDelete);
+
+        $no = 0;
+        $int = 0;
+        $count = count($national);
+        $question_marks = str_repeat(",(?,?,?)", $count - 1);
+
+        $queryInterested = " INSERT INTO interesting_relations (no , user_no, location_no) VALUES (?,?,?)$question_marks;";
+        $st4 = $pdo->prepare($queryInterested);
+        foreach ($national as $row => $value) {
+            $st4->bindValue($int + 1, $no);
+            $st4->bindValue($int + 2, $userNo);
+            $st4->bindValue($int + 3, $value);
+            $int = $int + 3;
+        }
+
+        $pdo->beginTransaction();
+        $st1->execute([$url, $userNo]);
+        $st2->execute([$introduce, $userNo]);
+        $st3->execute([$userNo]);
+        $st4->execute();
+
+        $pdo->commit();
+
+
+        $st = null;
+        $pdo = null;
+
+        return 1;
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollback();
+        }
+        throw $e;
+        return 2;
+    }
 }
 
 function without_postPost($userNo, $nationalNo, $text)
@@ -363,22 +395,148 @@ function postPost($userNo, $nationalNo, $text, $photoResult)
     $pdo = null; //insert post
 }
 
-function getPost()
+
+function getPost($postNo, $userNo)
 {
-    $pdo = pdoSqlConnect();
-    $query = "";
+    try {
 
-    $st = $pdo->prepare($query);
-    //    $st->execute([$param,$param]);
-    $st->execute();
-    $st->setFetchMode(PDO::FETCH_ASSOC);
-    $res = $st->fetchAll();
+        $post_result = array();
+        $int = 0;
+        $postNo = (int)$postNo;
+        $is_deleted = (string)'N';
+        $pdo = pdoSqlConnect();
+        $query = "select getlike.postNo,
+             nickname,
+             getlike.user_no           as userNo,
+             profileUrl,
+             getlike.registered_timestamp,
+             contents,
+             likedCount,
+             count(scrap_relations.no) as scrapCount
+      from (
+               select getUser.postNo,
+                      nickname,
+                      getUser.user_no,
+                      profileUrl,
+                      registered_timestamp,
+                      contents,
+                      count(likes.no) as likedCount
+               from (select postinUSER.no as postNo,
+                            nickname,
+                            postinUSER.user_no,
+                            images.url    as profileUrl,
+                            postinUSER.name,
+                            postinUSER.registered_timestamp,
+                            contents
+                     from users
+                              inner join images
+                              inner join (select *
+                                          from posts
+                                                   inner join locations on posts.location_no = locations.nationalNo
+                                          where posts.no = ?
+                                            and is_deleted = ?) postinUSER
+                                         on users.no = postinUSER.user_no and users.profile_image_no = images.no and
+                                            postinUSER.user_no = users.no) getUser
+                        left outer join likes
+                                        on getUser.postNo = likes.post_no and likes.is_deleted = ?
+               group by getUser.postNo, nickname, profileUrl,   registered_timestamp, contents) getlike
+               left outer join scrap_relations
+                               on getlike.postNo = scrap_relations.post_no and scrap_relations.is_deleted = ?
+      group by getlike.postNo, nickname, profileUrl, registered_timestamp, contents, likedCount
+      order by registered_timestamp";
 
-    $st = null;
-    $pdo = null;
+        $st = $pdo->prepare($query);
+        //    $st->execute([$param,$param]);
 
-    return $res;
+        $st = $pdo->prepare($query);
+        $st->bindParam(1, $postNo, PDO::PARAM_INT);
+        $st->bindParam(2, $is_deleted, PDO::PARAM_STR);
+        $st->bindParam(3, $is_deleted, PDO::PARAM_STR);
+        $st->bindParam(4, $is_deleted, PDO::PARAM_STR);
+        $st->execute();
+        $st->setFetchMode(PDO::FETCH_ASSOC);
+        $res = $st->fetchAll();
 
+        $st = null;
+        $pdo = null;
+
+        foreach ($res as $row) {
+            $postNo = $row['postNo'];
+
+            $pdo2 = pdoSqlConnect();
+            $querymyLike = "select exists(select * from posts inner join likes on posts.no = likes.post_no where post_no = ? and likes.is_deleted = ? and likes.user_no = ?) as myLike;";
+            $st1 = $pdo2->prepare($querymyLike);
+            $querymyScrap = "select exists(select * from posts inner join scrap_relations on posts.no = scrap_relations.post_no where post_no = ? and scrap_relations.is_deleted = ? and scrap_relations.user_no = ?) as myScrap;";
+            $st2 = $pdo2->prepare($querymyScrap);
+            $querymyPost = "select exists (select * from posts inner join users on posts.user_no = users.no where posts.no = ? and posts.user_no = ? )as myPost;";
+            $st3 = $pdo2->prepare($querymyPost);
+            $queryimageUrl = "select distinct url as imageUrl from posts inner join post_image_relations inner join images on posts.no = post_image_relations.post_no and posts.registered_timestamp = images.is_registered where posts.no =? and images.is_deleted = ?;";
+            $st4 = $pdo2->prepare($queryimageUrl);
+            $querycomments = "select count(*)as commentsCount from posts inner join comments on comments.post_no = posts.no where posts.no = ? and comments.is_deleted = ? order by comments.comment_sequence;";
+            $st5 = $pdo2->prepare($querycomments);
+            $queryNational = "select locations.name as nationalName from posts inner join locations on posts.location_no = locations.nationalNo where posts.no = ?;";
+            $st6 = $pdo2->prepare($queryNational);
+
+            $pdo2->beginTransaction();
+            $st1->execute([$postNo, $is_deleted, $userNo]);
+            $st2->execute([$postNo, $is_deleted, $userNo]);
+            $st3->execute([$postNo, $userNo]);
+            $st4->execute([$postNo, $is_deleted]);
+            $st5->execute([$postNo, $is_deleted]);
+            $st6->execute([$postNo]);
+            $pdo2->commit();
+
+            $st1->setFetchMode(PDO::FETCH_ASSOC);
+            $res1 = $st1->fetchAll();
+            $st2->setFetchMode(PDO::FETCH_ASSOC);
+            $res2 = $st2->fetchAll();
+            $st3->setFetchMode(PDO::FETCH_ASSOC);
+            $res3 = $st3->fetchAll();
+            $st4->setFetchMode(PDO::FETCH_ASSOC);
+            $res4 = $st4->fetchAll();
+            $st5->setFetchMode(PDO::FETCH_ASSOC);
+            $res5 = $st5->fetchAll();
+            $st6->setFetchMode(PDO::FETCH_ASSOC);
+            $res6 = $st6->fetchAll();
+
+
+            $st1 = null;
+            $st2 = null;
+            $st3 = null;
+            $st4 = null;
+            $st5 = null;
+            $st6 = null;
+            $pdo2 = null;
+
+            $st = null;
+            $pdo = null;
+
+            $myLike = $res1[0];
+            $myScrap = $res2[0];
+            $myPost = $res3[0];
+            $url = $res4;
+            $commentsCount = $res5[0];
+            $nationalName = $res6[0];
+
+            $int = $int + 1;
+
+            $row['myLike'] = $myLike['myLike'];
+            $row['myScrap'] = $myScrap['myScrap'];
+            $row['myPost'] = $myPost['myPost'];
+            $row['imageUrl'] = $url;
+            $row['commentsCount'] = $commentsCount['commentsCount'];
+            $row['nationalName'] = $nationalName['nationalName'];
+
+            array_push($post_result, $row);
+        }
+        return $post_result;
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollback();
+        }
+        throw $e;
+        return 2;
+    }
 }
 
 function postLike($postNo, $userNo)
@@ -451,7 +609,11 @@ function getScrap($userNo)
 {
     $is_deleted = 'N';
     $pdo = pdoSqlConnect();
-    $query = "SELECT scraps.no, url,  title, is_closure FROM scraps inner join images on scraps.title_image_no = images.no where user_no = ? and scraps.is_deleted = ?;";
+    $query = "SELECT scraps.no, url, title, is_closure
+FROM scraps
+         inner join images on scraps.title_image_no = images.no
+where user_no = ?
+  and scraps.is_deleted = ?;";
 
     $st = $pdo->prepare($query);
     //    $st->execute([$param,$param]);
@@ -465,23 +627,23 @@ function getScrap($userNo)
     return $res;
 }
 
-function doScrap($scrapNo, $postNo)
+function doScrap($scrapNo, $postNo, $userNo)
 {
     $no = (int)0;
     $is_deleted = (string)'N';
     $is_registered = (string)date("Y-m-d H:i:s");
 
     $pdo = pdoSqlConnect();
-    $query = "insert into scrap_relations (no, scrap_no, post_no, registered_timestamp, is_deleted)  values (?,?,?,?,?);";
+    $query = "insert into scrap_relations (no, scrap_no, post_no, registered_timestamp, is_deleted, user_no)  values (?,?,?,?,?,?);";
 
     $st = $pdo->prepare($query);
-    $st->execute([$no, $scrapNo, $postNo, $is_registered, $is_deleted]);
+    $st->execute([$no, $scrapNo, $postNo, $is_registered, $is_deleted, $userNo]);
 
     $st = null;
     $pdo = null;
 }
 
-function dontScap($scrapNo, $postNo)
+function dontScap($postNo, $scrapNo)
 {
     $is_deleted = 'Y';
     $pdo = pdoSqlConnect();
@@ -494,6 +656,28 @@ function dontScap($scrapNo, $postNo)
 
     $st = null;
     $pdo = null;
+}
+
+function dontScapByUserNo($postNo, $userNo)
+{
+    try {
+        $is_deleted = 'Y';
+        $pdo = pdoSqlConnect();
+        $query = "UPDATE scrap_relations
+                 SET is_deleted = ?
+                WHERE user_no = ? and post_no = ?;";
+
+        $st = $pdo->prepare($query);
+        $st->execute([$is_deleted, $userNo, $postNo]);
+
+        $st = null;
+        $pdo = null;
+
+        return 1;
+    } catch (Exception $e) {
+//        echo $e;
+        return 2;
+    }
 }
 
 function getHome($nationalArr, $userNo, $page, $size)
@@ -516,10 +700,9 @@ from (select postinUSER.no as postNo, nickname, postinUSER.user_no, images.url a
 from users inner join images inner join (select * from posts inner join locations on posts.location_no = locations.nationalNo 
 where ";
         $whereString = "(";
-        if($nationalArr[0] == 0){
+        if ($nationalArr[0] == 0) {
             $whereString = "1 = 1 ";
-        }
-        else{
+        } else {
             for ($i = 0; $i < count($nationalArr); $i++) {
                 $nationalNo = $nationalArr[$i];
                 if ($i == count($nationalArr) - 1) {
@@ -536,8 +719,8 @@ where ";
 left outer join likes
     on getUser.postNo = likes.post_no and likes.is_deleted = :deleted2 group by getUser.postNo, nickname, profileUrl, registered_timestamp, contents) getlike
 left outer join scrap_relations on getlike.postNo = scrap_relations.post_no and scrap_relations.is_deleted = :deleted3
-group by getlike.postNo, nickname, profileUrl, registered_timestamp, contents, likedCount order by registered_timestamp limit :page, :siz;";
-        $query = $query.$queryBack;
+group by getlike.postNo, nickname, profileUrl, registered_timestamp, contents, likedCount order by registered_timestamp DESC limit :page, :siz;";
+        $query = $query . $queryBack;
         $st = $pdo->prepare($query);
 //        echo $query;
         $st->bindParam(':deleted1', $is_deleted, PDO::PARAM_STR);
@@ -554,15 +737,16 @@ group by getlike.postNo, nickname, profileUrl, registered_timestamp, contents, l
 
         foreach ($res as $row) {
             $postNo = $row['postNo'];
+//            echo $postNo;
 
             $pdo2 = pdoSqlConnect();
             $querymyLike = "select exists(select * from posts inner join likes on posts.no = likes.post_no where post_no = ? and likes.is_deleted = ? and likes.user_no = ?) as myLike;";
             $st1 = $pdo2->prepare($querymyLike);
-            $querymyScrap = "select exists(select * from posts inner join scrap_relations on posts.no = scrap_relations.post_no where post_no = ? and scrap_relations.is_deleted = ?) as myScrap;";
+            $querymyScrap = "select exists(select * from posts inner join scrap_relations on posts.no = scrap_relations.post_no where post_no = ? and scrap_relations.is_deleted = ? and scrap_relations.user_no = ?) as myScrap;";
             $st2 = $pdo2->prepare($querymyScrap);
             $querymyPost = "select exists (select * from posts inner join users on posts.user_no = users.no where posts.no = ? and posts.user_no = ? )as myPost;";
             $st3 = $pdo2->prepare($querymyPost);
-            $queryimageUrl = "select url as imageUrl from posts inner join post_image_relations inner join images on posts.no = post_image_relations.post_no and posts.registered_timestamp = images.is_registered where posts.no =? and images.is_deleted = ? order by image_sqeunce;";
+            $queryimageUrl = "select distinct url as imageUrl from posts inner join post_image_relations inner join images on posts.no = post_image_relations.post_no and posts.registered_timestamp = images.is_registered where posts.no =? and images.is_deleted = ?;";
             $st4 = $pdo2->prepare($queryimageUrl);
             $querycomments = "select count(*)as commentsCount from posts inner join comments on comments.post_no = posts.no where posts.no = ? and comments.is_deleted = ? order by comments.comment_sequence;";
             $st5 = $pdo2->prepare($querycomments);
@@ -571,7 +755,7 @@ group by getlike.postNo, nickname, profileUrl, registered_timestamp, contents, l
 
             $pdo2->beginTransaction();
             $st1->execute([$postNo, $is_deleted, $userNo]);
-            $st2->execute([$postNo, $is_deleted]);
+            $st2->execute([$postNo, $is_deleted, $userNo]);
             $st3->execute([$postNo, $userNo]);
             $st4->execute([$postNo, $is_deleted]);
             $st5->execute([$postNo, $is_deleted]);
@@ -624,6 +808,7 @@ group by getlike.postNo, nickname, profileUrl, registered_timestamp, contents, l
             $row['myScrap'] = $myScrap['myScrap'];
             $row['myPost'] = $myPost['myPost'];
             $row['imageUrl'] = $url;
+//            echo json_encode($url);
             $row['commentsCount'] = $commentsCount['commentsCount'];
             $row['nationalName'] = $nationalName['nationalName'];
 
@@ -633,6 +818,332 @@ group by getlike.postNo, nickname, profileUrl, registered_timestamp, contents, l
 
         return $post_result;
     } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollback();
+        }
+        echo $e;
+    }
+}
+
+function getCommnets($postNo) //수정필요
+{
+    try {
+
+        $comments_result = array();
+        $sequence = (int)1;
+        $is_deleted = (string)'N';
+        $pdo = pdoSqlConnect();
+        $query = "select comments.no as commentsNo, userNo, nickname, url as profileImage, comments.registered_timestamp as registerAt, contents
+from (select comments.no, users.no as userNo, nickname, profile_image_no, comments.registered_timestamp, contents
+      from comments
+               inner join users on comments.user_no = users.no
+      where comment_sequence = ?
+        and post_no = ?
+        and comments.is_deleted = ?
+      order by no) comments
+         inner join images on comments.profile_image_no = images.no order by registerAt desc;";
+
+        $st = $pdo->prepare($query);
+        //    $st->execute([$param,$param]);
+        $st->execute([$sequence, $postNo, $is_deleted]);
+        $st->setFetchMode(PDO::FETCH_ASSOC);
+        $res = $st->fetchAll();
+
+        $st = null;
+        $pdo = null;
+
+        foreach ($res as $row) {
+            $commentsNo = $row['commentsNo']; //댓글 수 마다 대댓글이 얼마나 있는지 체킹
+
+//            echo $commentsNo;
+
+            $pdo = pdoSqlConnect();
+            $is_deleted = (string)'N';
+            $query = "select count(*) as commentsCount
+from comments
+         inner join users on comments.user_no = users.no
+where comments.is_deleted = ?
+and (select comment_sequence from comments where no = ?) < comment_sequence
+and tag_no = ?
+order by comments.comment_sequence;";
+
+            $st = $pdo->prepare($query);
+            //    $st->execute([$param,$param]);
+            $st->execute([$is_deleted, $commentsNo, $commentsNo]);
+            $st->setFetchMode(PDO::FETCH_ASSOC);
+            $res = $st->fetchAll();
+
+            $st = null;
+            $pdo = null;
+
+            $row['commentsCount'] = $res[0]['commentsCount'];
+//
+            array_push($comments_result, $row);
+        }
+        return $comments_result;
+    } catch (Exception $e) {
+        echo $e;
+    }
+}
+
+function postComments_without_tag($userNo, $postNo, $content)
+{
+    $no = (int)0;
+    $is_deleted = (string)'N';
+    $timestamp = date("Y-m-d H:i:s");
+    $sequence = (int)1;
+    $pdo = pdoSqlConnect();
+    $query = "INSERT INTO comments (no, user_no, post_no, registered_timestamp, comment_sequence,
+                      contents, is_deleted)
+VALUES (?, ?, ?, ?, ?, ?, ?);";
+
+    $st = $pdo->prepare($query);
+    $st->bindParam(1, $no, PDO::PARAM_INT);
+    $st->bindParam(2, $userNo, PDO::PARAM_INT);
+    $st->bindParam(3, $postNo, PDO::PARAM_INT);
+    $st->bindParam(4, $timestamp, PDO::PARAM_STR);
+    $st->bindParam(5, $sequence, PDO::PARAM_INT);
+    $st->bindParam(6, $content, PDO::PARAM_STR);
+    $st->bindParam(7, $is_deleted, PDO::PARAM_STR);
+    $st->execute();
+
+    $st = null;
+    $pdo = null;
+}
+
+function postComments($userNo, $postNo, $content, $tagNo)
+{
+    try {
+
+        $no = (int)0;
+        $is_deleted = (string)'N';
+        $timestamp = date("Y-m-d H:i:s");
+
+        $pdo = pdoSqlConnect();
+        $query = "select comment_sequence from comments where no = ?;";
+
+        $st = $pdo->prepare($query);
+        //    $st->execute([$param,$param]);
+        $st->execute([$tagNo]);
+        $st->setFetchMode(PDO::FETCH_ASSOC);
+        $res = $st->fetchAll();
+
+        $st = null;
+        $pdo = null;
+
+        $sequence = $res[0]['comment_sequence']; //taguser_seqeunce
+        $sequence = $sequence + 1;
+
+        $pdo = pdoSqlConnect();
+        $query = "
+INSERT INTO comments (no, user_no, post_no, tag_no, registered_timestamp, comment_sequence,
+                      contents, is_deleted)
+VALUES (?, ?, ?, ?, ?, ? ,?, ?);";
+
+        $st = $pdo->prepare($query);
+        $st->bindParam(1, $no, PDO::PARAM_INT);
+        $st->bindParam(2, $userNo, PDO::PARAM_INT);
+        $st->bindParam(3, $postNo, PDO::PARAM_INT);
+        $st->bindParam(4, $tagNo, PDO::PARAM_INT);
+        $st->bindParam(5, $timestamp, PDO::PARAM_INT);
+        $st->bindParam(6, $sequence, PDO::PARAM_INT);
+        $st->bindParam(7, $content, PDO::PARAM_STR);
+        $st->bindParam(8, $is_deleted, PDO::PARAM_STR);
+        $st->execute();
+
+        $st = null;
+        $pdo = null;
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollback();
+        }
+        throw $e;
+        return 2;
+    }
+}
+
+function getTagcomments($commentsNo, $tagNo)
+{
+    $is_deleted = (string)'N';
+    $pdo = pdoSqlConnect();
+    $query = "select commnetsNo                    as commnetsNo,
+       userNo,
+       nickname,
+       url                           as profileImage,
+       comments.registered_timestamp as registerAt,
+       comments.contents
+from (select comments.no      as commnetsNo,
+             comments.user_no as userNo,
+             nickname,
+             comments.registered_timestamp,
+             users.profile_image_no,
+             comments.contents
+      from comments
+               inner join users on comments.user_no = users.no
+      where comments.no >= ?
+        and comments.is_deleted = ?
+        and comments.comment_sequence > 1
+        and tag_no = ?
+      order by comments.comment_sequence desc) comments
+         inner join images on comments.profile_image_no = images.no;";
+
+    $st = $pdo->prepare($query);
+    //    $st->execute([$param,$param]);
+    $st->execute([$commentsNo, $is_deleted, $tagNo]);
+    $st->setFetchMode(PDO::FETCH_ASSOC);
+    $res = $st->fetchAll();
+
+    $st = null;
+    $pdo = null;
+
+    return $res;
+}
+
+
+function getscrapHome($scrapNo, $userNo, $page)
+{
+    try {
+        $int = (int)0;
+        $post_result = array();
+        $is_deleted = (string)'N';
+        $pdo = pdoSqlConnect();
+        $query = "select getlike.postNo,
+       nickname,
+       getlike.user_no           as userNo,
+       profileUrl,
+       getlike.registered_timestamp,
+       contents,
+       likedCount,
+       count(scrap_relations.no) as scrapCount
+from (
+         select getUser.postNo,
+                nickname,
+                getUser.user_no,
+                profileUrl,
+                registered_timestamp,
+                contents,
+                count(likes.no) as likedCount
+         from (select postinUSER.no as postNo,
+                      nickname,
+                      postinUSER.user_no,
+                      images.url    as profileUrl,
+                      postinUSER.name,
+                      postinUSER.registered_timestamp,
+                      contents
+               from users
+                        inner join images
+                        inner join (select *
+                                    from (select *
+                                          from posts
+                                                   inner join (select post_no from scrap_relations where is_deleted = :isDeleted and scrap_no = :scrapNo) onePost
+                                                              on posts.no = onePost.post_no) onePost1
+                                             inner join locations on onePost1.location_no = locations.nationalNo
+               ) postinUSER
+                                   on users.no = postinUSER.user_no and users.profile_image_no = images.no and
+                                      postinUSER.user_no = users.no) getUser
+                  left outer join likes
+                                  on getUser.postNo = likes.post_no and likes.is_deleted = :isDeleted
+         group by getUser.postNo, nickname, profileUrl, registered_timestamp, contents) getlike
+         left outer join scrap_relations
+                         on getlike.postNo = scrap_relations.post_no and scrap_relations.is_deleted = :isDeleted
+group by getlike.postNo, nickname, profileUrl, registered_timestamp, contents, likedCount
+order by registered_timestamp DESC
+limit :page, 20;";
+
+        $st = $pdo->prepare($query);
+//        $st->bindParam(1, $is_deleted, PDO::PARAM_STR);
+        $st->bindParam('scrapNo', $scrapNo, PDO::PARAM_INT);
+        $st->bindParam(':isDeleted', $is_deleted, PDO::PARAM_STR);
+        $st->bindParam(':page', $page, PDO::PARAM_INT);
+
+        $st->execute();
+
+
+        $st->setFetchMode(PDO::FETCH_ASSOC);
+        $res = $st->fetchAll();
+
+        $st = null;
+        $pdo = null;
+
+//        return $res;
+
+        foreach ($res as $row) {
+            $postNo = $row['postNo'];
+
+            $postNo = $row['postNo'];
+
+            $pdo2 = pdoSqlConnect();
+            $querymyLike = "select exists(select * from posts inner join likes on posts.no = likes.post_no where post_no = ? and likes.is_deleted = ? and likes.user_no = ?) as myLike;";
+            $st1 = $pdo2->prepare($querymyLike);
+            $querymyScrap = "select exists(select * from posts inner join scrap_relations on posts.no = scrap_relations.post_no where post_no = ? and scrap_relations.is_deleted = ?) as myScrap;";
+            $st2 = $pdo2->prepare($querymyScrap);
+            $querymyPost = "select exists (select * from posts inner join users on posts.user_no = users.no where posts.no = ? and posts.user_no = ? )as myPost;";
+            $st3 = $pdo2->prepare($querymyPost);
+            $queryimageUrl = "select distinct  url as imageUrl from posts inner join post_image_relations inner join images on posts.no = post_image_relations.post_no and posts.registered_timestamp = images.is_registered where posts.no =? and images.is_deleted = ?;";
+            $st4 = $pdo2->prepare($queryimageUrl);
+            $querycomments = "select count(*)as commentsCount from posts inner join comments on comments.post_no = posts.no where posts.no = ? and comments.is_deleted = ? order by comments.comment_sequence;";
+            $st5 = $pdo2->prepare($querycomments);
+            $queryNational = "select locations.name as nationalName from posts inner join locations on posts.location_no = locations.nationalNo where posts.no = ?;";
+            $st6 = $pdo2->prepare($queryNational);
+
+            $pdo2->beginTransaction();
+            $st1->execute([$postNo, $is_deleted, $userNo]);
+            $st2->execute([$postNo, $is_deleted]);
+            $st3->execute([$postNo, $userNo]);
+            $st4->execute([$postNo, $is_deleted]);
+            $st5->execute([$postNo, $is_deleted]);
+            $st6->execute([$postNo]);
+            $pdo2->commit();
+
+            $st1->setFetchMode(PDO::FETCH_ASSOC);
+            $res1 = $st1->fetchAll();
+            $st2->setFetchMode(PDO::FETCH_ASSOC);
+            $res2 = $st2->fetchAll();
+            $st3->setFetchMode(PDO::FETCH_ASSOC);
+            $res3 = $st3->fetchAll();
+            $st4->setFetchMode(PDO::FETCH_ASSOC);
+            $res4 = $st4->fetchAll();
+            $st5->setFetchMode(PDO::FETCH_ASSOC);
+            $res5 = $st5->fetchAll();
+            $st6->setFetchMode(PDO::FETCH_ASSOC);
+            $res6 = $st6->fetchAll();
+
+
+            $st1 = null;
+            $st2 = null;
+            $st3 = null;
+            $st4 = null;
+            $st5 = null;
+            $st6 = null;
+            $pdo2 = null;
+
+            $st = null;
+            $pdo = null;
+
+            $myLike = $res1[0];
+            $myScrap = $res2[0];
+            $myPost = $res3[0];
+            $url = $res4;
+            $commentsCount = $res5[0];
+            $nationalName = $res6[0];
+            $int = $int + 1;
+
+            $row['myLike'] = $myLike['myLike'];
+            $row['myScrap'] = $myScrap['myScrap'];
+            $row['myPost'] = $myPost['myPost'];
+            $row['imageUrl'] = $url;
+            $row['commentsCount'] = $commentsCount['commentsCount'];
+            $row['nationalName'] = $nationalName['nationalName'];
+
+            array_push($post_result, $row);
+
+        }
+        return $post_result;
+
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollback();
+        }
         echo $e;
     }
 }
@@ -735,29 +1246,41 @@ function testPost($name)
 
 function postCheck($postNo)
 {
+//    $is_deleted = 'N';
+//    $pdo = pdoSqlConnect();
+//    $query = "select exists(select * from scrap_relations where post_no = ? and scrap_no = ? and is_deleted = ?)as exist;";
+////        echo $query;
+//    $st = $pdo->prepare($query);
+//    //    $st->execute([$param,$param]);
+//    $st->execute([$postNo, $is_deleted]);
+//    $st->setFetchMode(PDO::FETCH_ASSOC);
+//    $res = $st->fetchAll();
+//
+//    $st = null;
+//    $pdo = null;
+//
+//    $firstResult = $res[0]['exist'];
+
     $is_deleted = 'N';
     $pdo = pdoSqlConnect();
-    $query = "select exists(select * from scrap_relations where post_no = ? and is_deleted = ?)as exist
-              union
-              select exists(select * from posts where  no = ? and is_deleted = ?)as exist;";
+    $query = "select exists(select * from posts where no = ? and is_deleted = ?)as exist;";
 //        echo $query;
     $st = $pdo->prepare($query);
     //    $st->execute([$param,$param]);
-    $st->execute([$postNo, $is_deleted, $postNo, $is_deleted]);
+    $st->execute([$postNo, $is_deleted]);
     $st->setFetchMode(PDO::FETCH_ASSOC);
-    $res = $st->fetchAll();
+    $res2 = $st->fetchAll();
 
     $st = null;
     $pdo = null;
 
-    $firstResult = $res[0]['exist'];
-    $secondResult = $res[1]['exist'];
+    $secondResult = $res2[0]['exist'];
 
-    if ($firstResult and $secondResult) {
+
+    if ($secondResult == 1) {
         return 1;
-    } else {
+    } else
         return 0;
-    }
 
 }
 
@@ -836,7 +1359,193 @@ function isValidJWToken($email, $password)
     return array("intval" => intval($res[0]["exist"]), "email" => $email);
 }
 
+function isScrapedPost($userNo, $postNo)
+{
 
+//    echo $userNo, $postNo;
+    $is_deleted = 'N';
+    $pdo = pdoSqlConnect();
+    $query = "select exists(select * from scrap_relations where user_no = ? and post_no = ? and is_deleted = ?)as exist;";
+//        echo $query;
+    $st = $pdo->prepare($query);
+    //    $st->execute([$param,$param]);
+    $st->execute([$userNo, $postNo, $is_deleted]);
+    $st->setFetchMode(PDO::FETCH_ASSOC);
+    $res = $st->fetchAll();
+
+    $st = null;
+    $pdo = null;
+
+    return $res[0]['exist'];
+}
+
+function getPost_word($userNo, $nationalArr, $word, $page)
+{
+    try {
+
+        $post_result = array();
+
+        $a = '%';
+        $word = (string)$a . $word . $a;
+        $userNo = (int)$userNo;
+        $page = (int)$page;
+        $size = (int)10;
+        $is_deleted = (string)'N';
+        $int = 0;
+        $pdo = pdoSqlConnect();
+        $query = "select getlike.postNo, nickname, getlike.user_no as userNo,profileUrl, getlike.registered_timestamp, contents, likedCount, count(scrap_relations.no) as scrapCount from(
+select getUser.postNo, nickname, getUser.user_no,profileUrl, registered_timestamp, contents, count(likes.no) as likedCount
+from (select postinUSER.no as postNo, nickname, postinUSER.user_no, images.url as profileUrl, postinUSER.name, postinUSER.registered_timestamp,contents
+from users inner join images inner join (select * from posts inner join locations on posts.location_no = locations.nationalNo 
+where ";
+        $whereString = "(";
+        if ($nationalArr[0] == 0) {
+            $whereString = "1 = 1 ";
+        } else {
+            for ($i = 0; $i < count($nationalArr); $i++) {
+                $nationalNo = $nationalArr[$i];
+                if ($i == count($nationalArr) - 1) {
+                    $whereString = $whereString . "location_no = " . $nationalNo . ") ";
+
+                } else {
+                    $whereString = $whereString . "location_no = " . $nationalNo . " or ";
+                }
+            }
+        }
+        $query = $query . $whereString;
+        $queryBack = "and is_deleted = :deleted1) postinUSER
+    on users.no = postinUSER.user_no and users.profile_image_no = images.no and postinUSER.user_no = users.no  where (contents like :content)
+                  or (nickname like :nickname)) getUser
+left outer join likes
+    on getUser.postNo = likes.post_no and likes.is_deleted = :deleted2 group by getUser.postNo, nickname, profileUrl, registered_timestamp, contents) getlike
+left outer join scrap_relations on getlike.postNo = scrap_relations.post_no and scrap_relations.is_deleted = :deleted3
+group by getlike.postNo, nickname, profileUrl, registered_timestamp, contents, likedCount order by registered_timestamp DESC limit :page, :siz;";
+        $query = $query . $queryBack;
+        $st = $pdo->prepare($query);
+//        echo $query;
+        $st->bindParam(':deleted1', $is_deleted, PDO::PARAM_STR);
+        $st->bindParam(':content', $word, PDO::PARAM_STR);
+        $st->bindParam(':nickname', $word, PDO::PARAM_STR);
+        $st->bindParam(':deleted2', $is_deleted, PDO::PARAM_STR);
+        $st->bindParam(':deleted3', $is_deleted, PDO::PARAM_STR);
+        $st->bindParam(':page', $page, PDO::PARAM_INT);
+        $st->bindParam(':siz', $size, PDO::PARAM_INT);
+
+        $st->execute();
+        $st->setFetchMode(PDO::FETCH_ASSOC);
+        $res = $st->fetchAll();
+
+//    where location_no = 1 OR location_no = 2 OR location_no = 3
+
+        foreach ($res as $row) {
+            $postNo = $row['postNo'];
+//            echo $postNo;
+
+            $pdo2 = pdoSqlConnect();
+            $querymyLike = "select exists(select * from posts inner join likes on posts.no = likes.post_no where post_no = ? and likes.is_deleted = ? and likes.user_no = ?) as myLike;";
+            $st1 = $pdo2->prepare($querymyLike);
+            $querymyScrap = "select exists(select * from posts inner join scrap_relations on posts.no = scrap_relations.post_no where post_no = ? and scrap_relations.is_deleted = ? and scrap_relations.user_no = ?) as myScrap;";
+            $st2 = $pdo2->prepare($querymyScrap);
+            $querymyPost = "select exists (select * from posts inner join users on posts.user_no = users.no where posts.no = ? and posts.user_no = ? )as myPost;";
+            $st3 = $pdo2->prepare($querymyPost);
+            $queryimageUrl = "select distinct url as imageUrl from posts inner join post_image_relations inner join images on posts.no = post_image_relations.post_no and posts.registered_timestamp = images.is_registered where posts.no =? and images.is_deleted = ?;";
+            $st4 = $pdo2->prepare($queryimageUrl);
+            $querycomments = "select count(*)as commentsCount from posts inner join comments on comments.post_no = posts.no where posts.no = ? and comments.is_deleted = ? order by comments.comment_sequence;";
+            $st5 = $pdo2->prepare($querycomments);
+            $queryNational = "select locations.name as nationalName from posts inner join locations on posts.location_no = locations.nationalNo where posts.no = ?;";
+            $st6 = $pdo2->prepare($queryNational);
+
+            $pdo2->beginTransaction();
+            $st1->execute([$postNo, $is_deleted, $userNo]);
+            $st2->execute([$postNo, $is_deleted, $userNo]);
+            $st3->execute([$postNo, $userNo]);
+            $st4->execute([$postNo, $is_deleted]);
+            $st5->execute([$postNo, $is_deleted]);
+            $st6->execute([$postNo]);
+            $pdo2->commit();
+
+            $st1->setFetchMode(PDO::FETCH_ASSOC);
+            $res1 = $st1->fetchAll();
+            $st2->setFetchMode(PDO::FETCH_ASSOC);
+            $res2 = $st2->fetchAll();
+            $st3->setFetchMode(PDO::FETCH_ASSOC);
+            $res3 = $st3->fetchAll();
+            $st4->setFetchMode(PDO::FETCH_ASSOC);
+            $res4 = $st4->fetchAll();
+            $st5->setFetchMode(PDO::FETCH_ASSOC);
+            $res5 = $st5->fetchAll();
+            $st6->setFetchMode(PDO::FETCH_ASSOC);
+            $res6 = $st6->fetchAll();
+
+
+            $st1 = null;
+            $st2 = null;
+            $st3 = null;
+            $st4 = null;
+            $st5 = null;
+            $st6 = null;
+            $pdo2 = null;
+
+            $st = null;
+            $pdo = null;
+
+            $myLike = $res1[0];
+            $myScrap = $res2[0];
+            $myPost = $res3[0];
+            $url = $res4;
+            $commentsCount = $res5[0];
+            $nationalName = $res6[0];
+
+            $int = $int + 1;
+
+            $row['myLike'] = $myLike['myLike'];
+            $row['myScrap'] = $myScrap['myScrap'];
+            $row['myPost'] = $myPost['myPost'];
+            $row['imageUrl'] = $url;
+//            echo json_encode($url);
+            $row['commentsCount'] = $commentsCount['commentsCount'];
+            $row['nationalName'] = $nationalName['nationalName'];
+
+            array_push($post_result, $row);
+
+        }
+
+        return $post_result;
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollback();
+        }
+        echo $e;
+    }
+}
+
+function getnick($word, $page)
+{
+    $a = '%';
+    $word = (string)$a . $word . $a;
+    $is_deleted = (int)0;
+    $page = (int)$page;
+    $pdo = pdoSqlConnect();
+    $query = "select users.no as userNo, url as profileImage, nickname as nickname
+from users
+         inner join images on users.profile_image_no = images.no
+where users.nickname like ?
+  and users.is_deleted = ? limit ?, 7;";
+//        echo $query;
+    $st = $pdo->prepare($query);
+    //    $st->execute([$param,$param]);
+    $st->bindParam(1, $word, PDO::PARAM_STR);
+    $st->bindParam(2, $is_deleted, PDO::PARAM_INT);
+    $st->bindParam(3, $page, PDO::PARAM_INT);
+    $st->execute();
+    $st->setFetchMode(PDO::FETCH_ASSOC);
+    $res = $st->fetchAll();
+
+    $st = null;
+    $pdo = null;
+
+    return $res;
+}
 //
 //function test()
 //{

@@ -94,8 +94,6 @@ try {
 
             $userNo = convert_to_userNo($email);
 
-//            echo "$userNo";
-
             if ($isintval === 0) //토큰 검증 여부
             {
                 $res->isSuccess = FALSE;
@@ -105,10 +103,24 @@ try {
                 addErrorLogs($errorLogs, $res, $req); //에러로그 오류
                 return;
             }
-            else if($isintval === 1)
+
+            $count = 0;
+            $nationalList= $req->result;
+            foreach($nationalList as $nationalNo => $value)
+            {
+                $nationalId = $value->nationalNo;
+                $national[$count++] = $nationalId;
+
+            }   
+            $url = $req->url;
+            $introduce = $req->introduce;
+
+            $patchResult = patchUser($url, $introduce, $userNo, $national);
+
+            if($patchResult == 1)
             {
                 http_response_code(200);
-                $res->result = patchUser($userNo);
+//                $res->result = patchUser($userNo);
                 $res->isSuccess = TRUE;
                 $res->code = 100;
                 $res->message = "유저상세정보 수정을 성공했습니다";

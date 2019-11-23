@@ -191,7 +191,7 @@ try {
                 $isinsertImage = insertImage($url);
                 $res->isSuccess = TRUE;
                 $res->code = 100;
-                $res->message = "개인정보 저장을 성공하였습니다";
+                $res->message = "사진 저장을 성공하였습니다";
                 echo json_encode($res, JSON_NUMERIC_CHECK);
                 return;
             }
